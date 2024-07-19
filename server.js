@@ -1,0 +1,66 @@
+const express = require('express');
+const path = require('path');
+const session = require('express-session');
+const flash = require('connect-flash');
+const passport = require('passport');
+const configurePassport = require('./config/passport');
+const authRouter = require('./routes/auth');
+const userRouter = require('./routes/users');
+require('dotenv').config(); // Load environment variables
+const {checkAuthenticated} = require('./middleware/auth');
+
+// Initialize the app
+const app = express();
+const PORT = process.env.PORT || 4000;
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// View engine setup
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+// Session middleware
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'secret', // Use environment variable for secret
+    resave: false,
+    saveUninitialized: false
+}));
+
+// Passport configuration and middleware
+configurePassport(passport);
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Flash messages
+app.use(flash());
+
+// Global variables for flash messages
+app.use((req, res, next) => {
+    res.locals.success_msg = req.flash('success_msg');
+    res.locals.error_msg = req.flash('error_msg');
+    res.locals.error = req.flash('error');
+    next();
+});
+
+// Routes
+app.use('/auth', authRouter);
+app.use('/users', userRouter);
+
+// Basic route with authentication
+app.get('/', checkAuthenticated, (req, res) => {
+    res.render('dashboard', { user: req.user });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Internal Server Error');
+});
+
+// Start the server
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
