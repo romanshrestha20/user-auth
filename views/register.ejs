@@ -1,31 +1,33 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Register Page</title>
-</head>
-<body>
-    <h2>Register Page</h2>
-
-    <form action="/auth/register" method="post">
-        <label for="name">Username:</label>
-        <input type="text" id="name" name="name" required>
-    
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required>
-    
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required>
-    
+<h2>Register</h2>
+<form action="/auth/register" method="POST">
+    <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" class="form-control" id="name" name="name" required>
+    </div>
+    <div class="form-group">
+        <label for="email">Email address</label>
+        <input type="email" class="form-control" id="email" name="email" required>
+    </div>
+    <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+    </div>
+    <div class="form-group">
         <label for="confirmPassword">Confirm Password:</label>
-        <input type="password" id="confirmPassword" name="confirmPassword" required>
-    
-        <button type="submit">Register</button>
-    </form>
-    
-    <p>
-        click <a href="/auth/login">here</a> to login
-      </p>
-    <a href="/auth/google" class="btn btn-danger">Login with Google</a>
+        <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+    </div>
 
-</body>
-</html>
+    
+    <button type="submit" class="btn btn-primary">Register</button>
+</form>
+<p>
+    Already have an account? 
+    Click <a href="/auth/login">here</a> to login
+</p>
+
+<p>
+    Sign in with Google 
+    <a href="/auth/google">here</a>
+    
+
+</p>

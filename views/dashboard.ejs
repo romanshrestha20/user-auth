@@ -1,18 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-
-<body>
-    <h2>
-        Welcome to my world!!!
-    </h2>
-    <p>HI <%= user && user.name %></p>
-    <strong>Click  <a href="/auth/logout/">here</a> to logout.</strong>
-</body>
-
-</html>
+<div class="container">
+    <h2>Dashboard</h2>
+    <p>Welcome, <%= user.name %>!</p>
+    <p>Your email is: <%= user.email %></p>
+    <a href="/auth/logout" class="btn btn-primary">Logout</a>
+</div>

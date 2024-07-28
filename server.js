@@ -6,8 +6,10 @@ const passport = require('passport');
 const configurePassport = require('./config/passport');
 const authRouter = require('./routes/auth');
 const userRouter = require('./routes/users');
+const ejs = require('ejs');
+const expressLayouts = require('express-ejs-layouts');
 require('dotenv').config(); // Load environment variables
-const {checkAuthenticated} = require('./middleware/auth');
+const { checkAuthenticated } = require('./middleware/auth');
 
 // Initialize the app
 const app = express();
@@ -21,6 +23,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Use express-ejs-layouts middleware
+app.use(expressLayouts);
+app.set('layout', 'layouts/layout'); // Specify the layout file
 
 // Session middleware
 app.use(session({
@@ -51,7 +57,7 @@ app.use('/users', userRouter);
 
 // Basic route with authentication
 app.get('/', checkAuthenticated, (req, res) => {
-    res.render('dashboard', { user: req.user });
+    res.render('dashboard', { user: req.user, title: 'Dashboard' });
 });
 
 // Error handling middleware
