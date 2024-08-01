@@ -19,15 +19,15 @@ const createUser = async (name, email, password, googleId = null) => {
 };
 
 const getUserByToken = async (token) => {
-    const res = await pool.query('SELECT * FROM users WHERE reset_token = $1', [token]);
+    const res = await pool.query('SELECT * FROM users WHERE token = $1', [token]);
     return res.rows[0];
 };
 
 const updatetoken = async (user) => {
     try {
         const res = await pool.query(
-            'UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE email = $3 RETURNING *',
-            [user.reset_token, user.reset_token_expires, user.email]
+            'UPDATE users SET token = $1, token_expires = $2 WHERE email = $3 RETURNING *',
+            [user.token, user.token_expires, user.email]
         );
         return res.rows[0];
     } catch (error) {

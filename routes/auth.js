@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
 const { getUserByEmail, createUser, getUserByToken, updatetoken, updateUserPassword } = require('../services/userService');
-const { sendResetEmail, generateResetToken } = require('../config/mailConfig');
+const { sendResetEmail, generateToken } = require('../config/mailConfig');
 
 // Redirect to Google OAuth
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -21,22 +21,6 @@ router.get('/google/callback', (req, res, next) => {
     }
 });
 
-// Redirect to GitHub OAuth
-// router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
-
-// Handle GitHub OAuth callback
-// router.get('/github/callback', (req, res, next) => {
-//     passport.authenticate('github', { failureRedirect: '/auth/login' })(req, res, next);
-// }
-// , (req, res) => {
-//     try {
-//         req.flash('success_msg', 'You are now logged in with GitHub');
-//         res.redirect('/');
-//     } catch (error) {
-//         console.error(error.message);
-//         res.status(500).json({ error: 'Server error' });
-//     }
-// });
 
 // Render registration form
 router.get('/register', (req, res) => {
@@ -138,41 +122,46 @@ router.post('/email-confirmation', async (req, res) => {
     try {
         console.log('Received request to send reset email for:', email);
 
-        const user = await getUserByEmail(email); 
+        // Check if the user exists
+        const user = await getUserByEmail(email);
         if (!user) {
             req.flash('error_msg', 'User not found');
-            return res.status(404).json({ error: 'User not found' });
+            return res.redirect('/auth/email-confirmation'); // Stop execution
         }
 
-        const token = generateResetToken();
+        // Generate a reset token and expiration time
+        const token = generateToken();
         const resetTokenExpiration = new Date(Date.now() + 3600000); // 1 hour
 
         console.log('Generated reset token:', token);
 
-        const updatedUser = await updatetoken({ 
+        // Update the user's record with the reset token and expiration
+        const updatedUser = await updatetoken({
             ...user,
-            reset_token: token,
-            reset_token_expires: resetTokenExpiration
+            token: token,
+            token_expires: resetTokenExpiration
         });
 
         if (!updatedUser) {
             req.flash('error_msg', 'Failed to update token');
-            return res.status(500).json({ error: 'Failed to update token' });
+            return res.redirect('/auth/email-confirmation'); // Stop execution
         }
 
-        
+        // Send the reset email
         await sendResetEmail(email, token, req);
-        
-        res.redirect('/auth/login');
-        req.flash('success_msg', 'Email sent successfully');
-        
-
+        req.flash('success_msg', 'Reset email sent successfully');
+        return res.redirect('/auth/login'); // Stop execution
     } catch (error) {
         console.error('Error handling email confirmation:', error.message);
-        req.flash('error_msg', 'Server error');
-        res.status(500).json({ error: 'Server error' });
+
+        // Check if headers have already been sent before sending another response
+        if (!res.headersSent) {
+            req.flash('error_msg', 'Server error');
+            return res.status(500).json({ error: 'Server error' }); // Stop execution
+        }
     }
 });
+
 
 // Render reset password form
 router.get('/reset-password/:token', async (req, res) => {
@@ -205,7 +194,7 @@ router.post('/reset-password/:token', async (req, res) => {
         if (!user) {
             req.flash('error_msg', 'Invalid token');
             return res.redirect(`/auth/reset-password/${token}`);
-        } else if (user.reset_token_expires < Date.now()) {
+        } else if (user.token_expires < Date.now()) {
             req.flash('error_msg', 'Token expired');
             return res.redirect(`/auth/reset-password/${token}`);
         }
@@ -249,7 +238,7 @@ router.post('/reset-password/:token', async (req, res) => {
         const user = await getUserByToken(token);
         if (!user) {
             return res.status(400).json({ error: 'Invalid token' });
-        } else if (user.reset_token_expires < Date.now()) {
+        } else if (user.token_expires < Date.now()) {
             return res.status(400).json({ error: 'Token expired' });
         }
 
