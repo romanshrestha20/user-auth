@@ -2,8 +2,20 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
-const { getUserByEmail, createUser, getUserByToken, updatetoken, updateUserPassword } = require('../services/userService');
-const { sendResetEmail, generateToken } = require('../config/mailConfig');
+const { 
+    getUserByEmail, 
+    createUser, 
+    getUserByToken, 
+    updatetoken, 
+    updateUserPassword, 
+    storeOtp, 
+    getOtpByValue, 
+    deleteUser 
+} = require('../services/userService');
+const { sendOTPEmail, generateOTP } = require('../config/mailConfig');
+const { generateResetToken, verifyResetToken } = require('../services/tokenService');
+// Generate a token
+
 
 // Redirect to Google OAuth
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -21,7 +33,6 @@ router.get('/google/callback', (req, res, next) => {
     }
 });
 
-
 // Render registration form
 router.get('/register', (req, res) => {
     res.render('register', { title: 'Register' });
@@ -29,7 +40,7 @@ router.get('/register', (req, res) => {
 
 // Render login form
 router.get('/login', (req, res) => {
-    res.render('login', { title: 'Login' });
+    res.render('login', { title: 'Login', user: req.user });
 });
 
 // Handle registration form submission
@@ -46,10 +57,11 @@ router.post('/register', async (req, res) => {
             req.flash('error_msg', 'Password must be at least 6 characters');
             return res.redirect('/auth/register');
         }
-        // check if email format is valid
+
         const emailRegex = /\S+@\S+\.\S+/;
         if (!emailRegex.test(email)) {
             req.flash('error_msg', 'Invalid email format');
+            return res.redirect('/auth/register');
         }
 
         if (password !== confirmPassword) {
@@ -75,7 +87,6 @@ router.post('/register', async (req, res) => {
         res.redirect('/auth/register');
     }
 });
-
 
 // Handle login form submission
 router.post('/login', (req, res, next) => {
@@ -112,53 +123,96 @@ router.get('/logout', (req, res, next) => {
 
 // Render email confirmation form
 router.get('/email-confirmation', (req, res) => {
-    res.render('users/email-confirmation', { title: 'Email Confirmation' });
+    res.render('users/email-confirmation', { title: 'Email Confirmation', user: req.user, email: '' });
 });
 
-// Route to handle email confirmation for password reset
+// Route to handle email confirmation for OTP
 router.post('/email-confirmation', async (req, res) => {
     const { email } = req.body;
 
     try {
-        console.log('Received request to send reset email for:', email);
-
-        // Check if the user exists
         const user = await getUserByEmail(email);
         if (!user) {
             req.flash('error_msg', 'User not found');
-            return res.redirect('/auth/email-confirmation'); // Stop execution
+            return res.render('users/email-confirmation', {
+                title: 'Email Confirmation',
+                email,
+                error_msg: req.flash('error_msg')
+            });
         }
 
-        // Generate a reset token and expiration time
-        const token = generateToken();
-        const resetTokenExpiration = new Date(Date.now() + 3600000); // 1 hour
+        const otp = generateOTP();
+        const otpExpiration = new Date(Date.now() + 10 * 60 * 1000);  // 10 minutes from now
 
-        console.log('Generated reset token:', token);
+        console.log('Generated OTP:', otp);
 
-        // Update the user's record with the reset token and expiration
-        const updatedUser = await updatetoken({
-            ...user,
-            token: token,
-            token_expires: resetTokenExpiration
-        });
-
-        if (!updatedUser) {
-            req.flash('error_msg', 'Failed to update token');
-            return res.redirect('/auth/email-confirmation'); // Stop execution
+        const otpStored = await storeOtp(email, otp, otpExpiration);
+        if (!otpStored) {
+            req.flash('error_msg', 'Failed to store OTP');
+            return res.render('users/email-confirmation', {
+                title: 'Email Confirmation',
+                email,
+                error_msg: req.flash('error_msg')
+            });
         }
 
-        // Send the reset email
-        await sendResetEmail(email, token, req);
-        req.flash('success_msg', 'Reset email sent successfully');
-        return res.redirect('/auth/login'); // Stop execution
+        await sendOTPEmail(email, otp);
+        req.flash('success_msg', 'OTP email sent successfully');
+        return res.redirect('/auth/email-confirmation');
     } catch (error) {
         console.error('Error handling email confirmation:', error.message);
+        req.flash('error_msg', 'Server error');
+        return res.render('users/email-confirmation', {
+            title: 'Email Confirmation',
+            email: req.body.email,
+            error_msg: req.flash('error_msg')
+        });
+    }
+});
 
-        // Check if headers have already been sent before sending another response
-        if (!res.headersSent) {
-            req.flash('error_msg', 'Server error');
-            return res.status(500).json({ error: 'Server error' }); // Stop execution
+// Route to handle OTP confirmation
+router.post('/confirm-otp', async (req, res) => {
+    const { otp } = req.body;
+
+    try {
+        if (!otp) {
+            req.flash('error_msg', 'Please enter the OTP');
+            return res.redirect('/auth/email-confirmation');
         }
+
+        if (otp.length !== 6) {
+            req.flash('error_msg', 'Invalid OTP length');
+            return res.redirect('/auth/email-confirmation');
+        }
+
+        const otpData = await getOtpByValue(otp);
+
+        if (!otpData || !otpData.otp || !otpData.otp_expires) {
+            req.flash('error_msg', 'No OTP data available or OTP expired');
+            return res.redirect('/auth/email-confirmation');
+        }
+
+        const { otp: storedOtp, otp_expires: otpExpiration, email } = otpData;
+        const otpExpirationDate = new Date(otpExpiration);
+        const currentDate = new Date();
+
+        if (otp !== storedOtp || currentDate > otpExpirationDate) {
+            req.flash('error_msg', 'Invalid or expired OTP');
+            return res.redirect('/auth/email-confirmation');
+        }
+
+        const user = await getUserByEmail(email);
+        const token = generateResetToken(user); // Pass the user object here
+        const tokenExpiration = new Date(Date.now() + 10 * 60 * 1000); // Token valid for 10 minutes
+
+        await updatetoken(email, token, tokenExpiration);
+
+        req.flash('success_msg', 'OTP confirmed successfully');
+        return res.redirect(`/auth/reset-password/${token}`);
+    } catch (error) {
+        console.error('Error confirming OTP:', error.message);
+        req.flash('error_msg', 'Server error');
+        return res.redirect('/auth/email-confirmation');
     }
 });
 
@@ -167,94 +221,64 @@ router.post('/email-confirmation', async (req, res) => {
 router.get('/reset-password/:token', async (req, res) => {
     const { token } = req.params;
     res.render('users/reset-password', { title: 'Reset Password', token });
-}
-);
+});
 
 router.post('/reset-password/:token', async (req, res) => {
     const { token } = req.params;
     const { password, confirmPassword } = req.body;
 
     try {
-        if (!password || !confirmPassword) {
-            req.flash('error_msg', 'Please fill in all fields');
-            return res.redirect(`/auth/reset-password/${token}`);
-        }
-
-        if (password.length < 6) {
-            req.flash('error_msg', 'Password must be at least 6 characters');
-            return res.redirect(`/auth/reset-password/${token}`);
-        }
-
         if (password !== confirmPassword) {
             req.flash('error_msg', 'Passwords do not match');
             return res.redirect(`/auth/reset-password/${token}`);
         }
 
-        const user = await getUserByToken(token);
+        const user = await verifyResetToken(token);
+
         if (!user) {
-            req.flash('error_msg', 'Invalid token');
-            return res.redirect(`/auth/reset-password/${token}`);
-        } else if (user.token_expires < Date.now()) {
-            req.flash('error_msg', 'Token expired');
+            req.flash('error_msg', 'Invalid or expired token');
             return res.redirect(`/auth/reset-password/${token}`);
         }
 
+        const { token_expires: tokenExpiration } = user;
+
+        if (!tokenExpiration) {
+            req.flash('error_msg', 'Token expiration not set');
+            return res.redirect(`/auth/reset-password/${token}`);
+        }
+
+        if (new Date() > new Date(tokenExpiration)) {
+            req.flash('error_msg', 'Token has expired');
+            return res.redirect(`/auth/reset-password/${token}`);
+        }
+        // Hash the password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
-
-        await updateUserPassword({
-            userId: user.id,
-            password: hashedPassword
-        });
+        await updateUserPassword({ userId: user.id, password: hashedPassword });
+        await updatetoken(user.email, null, null);
+        console.log('Updated token', token);
 
         req.flash('success_msg', 'Password reset successfully');
         res.redirect('/auth/login');
     } catch (error) {
-        console.error('Error resetting password:', error.message);
+        console.error('Error during password reset:', error.message);
         req.flash('error_msg', 'Server error');
         res.redirect(`/auth/reset-password/${token}`);
     }
 });
 
 
-// Handle reset password form submission
-router.post('/reset-password/:token', async (req, res) => {
-    const { token } = req.params;
-    const { password, confirmPassword } = req.body;
-
+// Route to delete user account
+router.delete('/:id', async (req, res) => {
     try {
-        if (!password || !confirmPassword) {
-            return res.status(400).json({ error: 'Please fill in all fields' });
-        }
-
-        if (password.length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
-        }
-
-        if (password !== confirmPassword) {
-            return res.status(400).json({ error: 'Passwords do not match' });
-        }
-
-        const user = await getUserByToken(token);
-        if (!user) {
-            return res.status(400).json({ error: 'Invalid token' });
-        } else if (user.token_expires < Date.now()) {
-            return res.status(400).json({ error: 'Token expired' });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        await updateUserPassword({
-            userId: user.id,
-            password: hashedPassword
-        });
-
-        res.json({ message: 'Password reset successfully' });
-        console.log('Password reset successfully');
+        const { id } = req.params;
+        await deleteUser(id);
+        req.flash('success_msg', 'Account deleted successfully');
+        res.redirect('/auth/login');
     } catch (error) {
-        console.error('Error resetting password:', error.message);
-        res.status(500).json({ error: 'Server error' });
+        console.error('Error deleting account:', error.message);
+        req.flash('error_msg', 'Server error');
+        res.redirect('/auth/login');
     }
 });
 

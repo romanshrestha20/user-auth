@@ -10,6 +10,8 @@ const ejs = require('ejs');
 const expressLayouts = require('express-ejs-layouts');
 require('dotenv').config(); // Load environment variables
 const { checkAuthenticated } = require('./middleware/auth');
+const errorHandler = require('./config/errorHandler');
+const helmet = require('helmet');
 
 // Initialize the app
 const app = express();
@@ -28,9 +30,12 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
 app.set('layout', 'layouts/layout'); // Specify the layout file
 
+// Security headers with Helmet
+app.use(helmet());
+
 // Session middleware
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'secret', // Use environment variable for secret
+    secret: process.env.SESSION_SECRET || 'secret',
     resave: false,
     saveUninitialized: false
 }));
@@ -61,9 +66,11 @@ app.get('/', checkAuthenticated, (req, res) => {
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Internal Server Error');
+app.use(errorHandler);
+
+// Catch-all for 404 errors
+app.use((req, res) => {
+    res.status(404).render('404', { title: '404 Not Found' });
 });
 
 // Start the server

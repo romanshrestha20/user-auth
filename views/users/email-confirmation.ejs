@@ -1,23 +1,39 @@
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="card">
+            <!-- Email Confirmation Form -->
+            <div class="card mb-4">
                 <div class="card-body">
                     <h1 class="card-title">Email Confirmation</h1>
                     <p class="card-text">Enter your email to receive a confirmation link.</p>
                     <form action="/auth/email-confirmation" method="post">
                         <div class="form-group">
                             <label for="email">Email:</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
+                            <input type="email" class="form-control" id="email" name="email" value="<%= email %>" required>
                         </div>
                         <button class="btn btn-primary" type="submit">Send Email</button>
                     </form>
-                    <!-- <div class="form-group">
-                        <label for="confirmation">Enter your confirmation code:</label>
-                        <input type="text" class="form-control" id="confirmation" name="confirmation" required>
-                    </div>
-                    <button class="btn btn-primary" type="submit">Confirm Email</button>
-                </div> -->
+                </div>
+            </div>
+
+            <!-- OTP Confirmation Form -->
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title">Confirm OTP</h1>
+                    <p class="card-text">Enter the OTP sent to your email to confirm.</p>
+                    <form action="/auth/confirm-otp" method="POST">
+                        <div class="form-group">
+                            <label for="confirmation">Enter OTP:</label>
+                            <input type="text" class="form-control" id="confirmation" name="otp" required>
+                        </div>
+                        <button class="btn btn-primary" type="submit">Confirm OTP</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Link to Login -->
+            <div class="mt-4">
+                <p>Already have an account? <a href="/auth/login">Login</a></p>
             </div>
         </div>
     </div>
