@@ -1,10 +1,10 @@
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+
 require('dotenv').config();
 
-// Function to generate reset token
-const generateToken = () => {
-    return crypto.randomBytes(20).toString('hex');
+const generateOTP = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
 }
 
 // Nodemailer transporter setup
@@ -28,7 +28,7 @@ function createEmailContent(subject, htmlContent) {
 }
 
 // Function to send email
-async function sendEmail(options) {
+const sendEmail = async (options) => {
     try {
         await transporter.sendMail(options);
         console.log(`${options.subject} email sent successfully.`);
@@ -38,8 +38,22 @@ async function sendEmail(options) {
     }
 }
 
+// Function to send OTP email
+const sendOTPEmail = async (email, otp) => {
+    const htmlContent = `
+    <p>Your OTP is: <strong>${otp}</strong></p>
+    <p>This OTP is valid for 10 minutes. Please do not share it with anyone.</p>
+    `;
+    const emailOptions = createEmailContent('OTP for Password Reset', htmlContent);
+    emailOptions.to = email;
+    await sendEmail(emailOptions);
+}
+
+// Function to generate reset token
+
+
 // Function to send reset email
-async function sendResetEmail(email, token, req) {
+const sendResetEmail = async (email, token, req) => {
     const resetLink = `http://${req.headers.host}/auth/reset-password/${token}`;
     const htmlContent = `
     <p>You are receiving this because you (or someone else) have requested the reset of the password for your account.</p>
@@ -51,11 +65,10 @@ async function sendResetEmail(email, token, req) {
     const emailOptions = createEmailContent('Password Reset Request', htmlContent);
     emailOptions.to = email;
     await sendEmail(emailOptions);
-
 }
 
 module.exports = {
-    generateToken,
-    sendResetEmail
+    sendResetEmail,
+    sendOTPEmail,
+    generateOTP
 };
-
