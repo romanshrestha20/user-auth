@@ -5,11 +5,12 @@ const flash = require('connect-flash');
 const passport = require('passport');
 const configurePassport = require('./config/passport');
 const authRouter = require('./routes/auth');
-const userRouter = require('./routes/users');
 const ejs = require('ejs');
 const expressLayouts = require('express-ejs-layouts');
 require('dotenv').config(); // Load environment variables
 const { checkAuthenticated } = require('./middleware/auth');
+const methodOverride = require('method-override');
+
 
 // Initialize the app
 const app = express();
@@ -27,6 +28,10 @@ app.set('views', path.join(__dirname, 'views'));
 // Use express-ejs-layouts middleware
 app.use(expressLayouts);
 app.set('layout', 'layouts/layout'); // Specify the layout file
+
+
+// Allow the use of PUT and DELETE methods
+app.use(methodOverride('_method'));
 
 // Session middleware
 app.use(session({
@@ -52,8 +57,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/auth', authRouter);
-app.use('/users', userRouter);
+app.use('/users', authRouter);
 
 // Basic route with authentication
 app.get('/', checkAuthenticated, (req, res) => {

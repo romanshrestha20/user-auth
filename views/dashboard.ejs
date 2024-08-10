@@ -1,7 +1,10 @@
-
 <div class="container">
     <h2>Dashboard</h2>
     <p>Welcome, <%= user.name %>!</p>
     <p>Your email is: <%= user.email %></p>
-    <a href="/auth/logout" class="btn btn-primary">Logout</a>
+
+    <!-- Include the delete form partial and pass user data -->
+    <%- include('partials/deleteForm', { url: `/users/${user.id}` }) %>
+
+    <a href="/users/logout" class="btn btn-primary">Logout</a>
 </div>

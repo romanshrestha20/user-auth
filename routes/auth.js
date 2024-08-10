@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
-const { getUserByEmail, createUser, getUserByToken, updatetoken, updateUserPassword } = require('../services/userService');
+const { getUserByEmail, createUser, getUserByToken, updatetoken, updateUserPassword, deleteUser } = require('../services/userService');
 const { sendResetEmail, generateToken } = require('../config/mailConfig');
 
 // Redirect to Google OAuth
@@ -10,7 +10,7 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 
 // Handle Google OAuth callback
 router.get('/google/callback', (req, res, next) => {
-    passport.authenticate('google', { failureRedirect: '/auth/login' })(req, res, next);
+    passport.authenticate('google', { failureRedirect: '/users/login' })(req, res, next);
 }, (req, res) => {
     try {
         req.flash('success_msg', 'You are now logged in with Google');
@@ -39,12 +39,12 @@ router.post('/register', async (req, res) => {
     try {
         if (!name || !email || !password || !confirmPassword) {
             req.flash('error_msg', 'Please fill in all fields');
-            return res.redirect('/auth/register');
+            return res.redirect('/users/register');
         }
 
         if (password.length < 6) {
             req.flash('error_msg', 'Password must be at least 6 characters');
-            return res.redirect('/auth/register');
+            return res.redirect('/users/register');
         }
         // check if email format is valid
         const emailRegex = /\S+@\S+\.\S+/;
@@ -54,13 +54,13 @@ router.post('/register', async (req, res) => {
 
         if (password !== confirmPassword) {
             req.flash('error_msg', 'Passwords do not match');
-            return res.redirect('/auth/register');
+            return res.redirect('/users/register');
         }
 
         const existingUser = await getUserByEmail(email);
         if (existingUser) {
             req.flash('error_msg', 'Email is already registered');
-            return res.redirect('/auth/register');
+            return res.redirect('/users/register');
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -68,11 +68,11 @@ router.post('/register', async (req, res) => {
 
         await createUser(name, email, hashedPassword);
         req.flash('success_msg', 'User registered successfully');
-        res.redirect('/auth/login');
+        res.redirect('/users/login');
     } catch (error) {
         console.error(error.message);
         req.flash('error_msg', 'Server error');
-        res.redirect('/auth/register');
+        res.redirect('/users/register');
     }
 });
 
@@ -86,7 +86,7 @@ router.post('/login', (req, res, next) => {
         }
         if (!user) {
             req.flash('error_msg', 'Invalid email or password');
-            return res.redirect('/auth/login');
+            return res.redirect('/users/login');
         }
         req.logIn(user, (err) => {
             if (err) {
@@ -106,7 +106,7 @@ router.get('/logout', (req, res, next) => {
             return next(err);
         }
         req.flash('success_msg', 'You are logged out');
-        res.redirect('/auth/login');
+        res.redirect('/users/login');
     });
 });
 
@@ -126,7 +126,7 @@ router.post('/email-confirmation', async (req, res) => {
         const user = await getUserByEmail(email);
         if (!user) {
             req.flash('error_msg', 'User not found');
-            return res.redirect('/auth/email-confirmation'); // Stop execution
+            return res.redirect('/users/email-confirmation'); // Stop execution
         }
 
         // Generate a reset token and expiration time
@@ -144,13 +144,13 @@ router.post('/email-confirmation', async (req, res) => {
 
         if (!updatedUser) {
             req.flash('error_msg', 'Failed to update token');
-            return res.redirect('/auth/email-confirmation'); // Stop execution
+            return res.redirect('/users/email-confirmation'); // Stop execution
         }
 
         // Send the reset email
         await sendResetEmail(email, token, req);
         req.flash('success_msg', 'Reset email sent successfully');
-        return res.redirect('/auth/login'); // Stop execution
+        return res.redirect('/users/login'); // Stop execution
     } catch (error) {
         console.error('Error handling email confirmation:', error.message);
 
@@ -177,26 +177,26 @@ router.post('/reset-password/:token', async (req, res) => {
     try {
         if (!password || !confirmPassword) {
             req.flash('error_msg', 'Please fill in all fields');
-            return res.redirect(`/auth/reset-password/${token}`);
+            return res.redirect(`/users/reset-password/${token}`);
         }
 
         if (password.length < 6) {
             req.flash('error_msg', 'Password must be at least 6 characters');
-            return res.redirect(`/auth/reset-password/${token}`);
+            return res.redirect(`/users/reset-password/${token}`);
         }
 
         if (password !== confirmPassword) {
             req.flash('error_msg', 'Passwords do not match');
-            return res.redirect(`/auth/reset-password/${token}`);
+            return res.redirect(`/users/reset-password/${token}`);
         }
 
         const user = await getUserByToken(token);
         if (!user) {
             req.flash('error_msg', 'Invalid token');
-            return res.redirect(`/auth/reset-password/${token}`);
+            return res.redirect(`/users/reset-password/${token}`);
         } else if (user.token_expires < Date.now()) {
             req.flash('error_msg', 'Token expired');
-            return res.redirect(`/auth/reset-password/${token}`);
+            return res.redirect(`/users/reset-password/${token}`);
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -208,11 +208,11 @@ router.post('/reset-password/:token', async (req, res) => {
         });
 
         req.flash('success_msg', 'Password reset successfully');
-        res.redirect('/auth/login');
+        res.redirect('/users/login');
     } catch (error) {
         console.error('Error resetting password:', error.message);
         req.flash('error_msg', 'Server error');
-        res.redirect(`/auth/reset-password/${token}`);
+        res.redirect(`/users/reset-password/${token}`);
     }
 });
 
@@ -257,5 +257,29 @@ router.post('/reset-password/:token', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const deletedUser = await deleteUser(id);
+        
+        if (!deletedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        req.logout(err => {
+            if (err) {
+                return next(err);
+            }
+            req.flash('success_msg', 'Your account has been removed. You are logged out');
+            res.redirect('/users/login');
+        });        
+            // Set flash message first, then redirect
+    } catch (error) {
+        console.error('Error deleting user:', error.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 
 module.exports = router;

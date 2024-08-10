@@ -5,7 +5,7 @@ module.exports = {
                 return next();
             }
             req.flash('error_msg', 'Please log in to view that resource');
-            res.redirect('/auth/login');
+            res.redirect('/users/login');
         } catch (error) {
             // Handle any errors that occur during authentication
             console.error(error);

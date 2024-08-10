@@ -49,11 +49,23 @@ const updateUserPassword = async ({ userId, password }) => {
     }
 };
 
+const deleteUser = async (id) => {
+    try {
+        const res = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
+        return res.rows[0] || null; // Return the deleted user or null if not found
+    } catch (error) {
+        console.error('Error deleting user:', error.message);
+        throw error;
+    }
+}
+
+
 module.exports = {
     getUserByEmail,
     getUserById,
     createUser,
     getUserByToken,
     updatetoken,
-    updateUserPassword
+    updateUserPassword,
+    deleteUser
 };
