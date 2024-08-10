@@ -40,7 +40,7 @@ async function sendEmail(options) {
 
 // Function to send reset email
 async function sendResetEmail(email, token, req) {
-    const resetLink = `http://${req.headers.host}/auth/reset-password/${token}`;
+    const resetLink = `http://${req.headers.host}/users/reset-password/${token}`;
     const htmlContent = `
     <p>You are receiving this because you (or someone else) have requested the reset of the password for your account.</p>
     <p>Please click on the following link, or paste this into your browser to complete the process:</p>
