@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
-const { getUserByEmail, createUser, getUserByToken, updatetoken, updateUserPassword, deleteUser } = require('../services/userService');
+const { getUserByEmail, createUser, getUserByToken, getUserById, updatetoken, updateUserPassword, deleteUser,
+    updateUser
+ } = require('../services/userService');
 const { sendResetEmail, generateToken } = require('../config/mailConfig');
 
 // Redirect to Google OAuth
@@ -217,47 +219,6 @@ router.post('/reset-password/:token', async (req, res) => {
 });
 
 
-// Handle reset password form submission
-router.post('/reset-password/:token', async (req, res) => {
-    const { token } = req.params;
-    const { password, confirmPassword } = req.body;
-
-    try {
-        if (!password || !confirmPassword) {
-            return res.status(400).json({ error: 'Please fill in all fields' });
-        }
-
-        if (password.length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
-        }
-
-        if (password !== confirmPassword) {
-            return res.status(400).json({ error: 'Passwords do not match' });
-        }
-
-        const user = await getUserByToken(token);
-        if (!user) {
-            return res.status(400).json({ error: 'Invalid token' });
-        } else if (user.token_expires < Date.now()) {
-            return res.status(400).json({ error: 'Token expired' });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        await updateUserPassword({
-            userId: user.id,
-            password: hashedPassword
-        });
-
-        res.json({ message: 'Password reset successfully' });
-        console.log('Password reset successfully');
-    } catch (error) {
-        console.error('Error resetting password:', error.message);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     
@@ -282,5 +243,44 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+router.put('/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, email, password } = req.body;
+    console.log('id:', id);
+    console.log('name:', name);
+    console.log('email:', email);
+
+    
+    try {
+        const user = await getUserById(id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (password) {
+            // Update only password
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            const updatedUser = await updateUserPassword({
+                userId: id,
+                password: hashedPassword
+            });
+            return res.json(updatedUser);
+        } else {
+            // Update name and email if no password is provided
+            const updatedUser = await updateUser({
+                id,
+                name: name || user.name,
+                email: email || user.email,
+                password: user.password // Keep the current password if not updating it
+            });
+            req.flash('success_msg', 'User updated successfully');
+            return res.redirect('/');
+        }
+    } catch (error) {
+        console.error('Error updating user:', error.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 module.exports = router;

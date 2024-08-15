@@ -1,7 +1,9 @@
 <div class="container">
     <h2>Dashboard</h2>
-    <p>Welcome, <%= user.name %>!</p>
-    <p>Your email is: <%= user.email %></p>
+    <h4>Namaste,
+        <strong class="text-danger"><%= user.name %></strong>
+    </h4>
+    <%- include('partials/_formFields', { url: `/users/${user.id}` }) %>
 
     <!-- Include the delete form partial and pass user data -->
     <%- include('partials/deleteForm', { url: `/users/${user.id}` }) %>
