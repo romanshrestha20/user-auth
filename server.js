@@ -5,7 +5,6 @@ const flash = require('connect-flash');
 const passport = require('passport');
 const configurePassport = require('./config/passport');
 const authRouter = require('./routes/auth');
-const ejs = require('ejs');
 const expressLayouts = require('express-ejs-layouts');
 require('dotenv').config(); // Load environment variables
 const { checkAuthenticated } = require('./middleware/auth');
@@ -25,6 +24,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// serve static files
+app.use(express.static(path.join(__dirname, 'public')));
 // Use express-ejs-layouts middleware
 app.use(expressLayouts);
 app.set('layout', 'layouts/layout'); // Specify the layout file

@@ -1,0 +1,74 @@
+/* Container and inner container styling */
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.inner-container {
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Make the FilePond drop area smaller and circular */
+.filepond--root {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: #e9ecef;
+    border: 2px dashed #007bff;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 0 auto;
+}
+
+/* Style the FilePond label text */
+.filepond--label-action {
+    color: #007bff;
+    font-weight: bold;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+/* Hide the default drop label */
+.filepond--drop-label {
+    display: none;
+}
+
+/* Customize the file item view (thumbnail inside the circle) */
+.filepond--item {
+    border-radius: 50%;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    box-shadow: none;
+}
+
+/* Remove the shadows on action buttons */
+.filepond--file-action-button {
+    box-shadow: none;
+}
+
+/* Progress indicator adjustment for the small circular area */
+.filepond--process-indicator {
+    color: #007bff;
+}
+
+/* General styling */
+body {
+    background-color: #f0f2f5;
+    font-family: 'Arial', sans-serif;
+    color: #333;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #007bff;
+    margin-bottom: 20px;
+}
