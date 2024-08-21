@@ -13,6 +13,9 @@ FilePond.setOptions({
     imageResizeTargetWidth: 250,
     imageResizeTargetHeight: 250,
     stylePanelLayout: 'circle',
+    server: {
+        server: '/upload',
+    }
    
 });
 

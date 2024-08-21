@@ -3,10 +3,12 @@
     <h4>Namaste,
         <strong class="text-danger"><%= user.name %></strong>
     </h4>
-    <%- include('partials/_formFields', { url: `/users/${user.id}` }) %>
+    <img src="/uploads/{{user.filename}}" alt="Profile Picture">
+    <%- include('partials/profileForm') %>
+    <%- include('partials/_formFields', { url: `/users/${user.user_id}` }) %>
 
     <!-- Include the delete form partial and pass user data -->
-    <%- include('partials/deleteForm', { url: `/users/${user.id}` }) %>
+    <%- include('partials/deleteForm', { url: `/users/${user.user_id}` }) %>
 
     <a href="/users/logout" class="btn btn-primary">Logout</a>
 </div>
