@@ -44,12 +44,12 @@ const configurePassport = (passport) => {
     }));
 
     passport.serializeUser((user, done) => {
-        done(null, user.id);
+        done(null, user.user_id);
     });
 
-    passport.deserializeUser(async (id, done) => {
+    passport.deserializeUser(async (user_id, done) => {
         try {
-            const user = await getUserById(id);
+            const user = await getUserById(user_id);
             if (!user) {
                 return done(new Error('User not found'), null);
             }

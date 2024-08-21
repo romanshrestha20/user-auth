@@ -6,10 +6,8 @@ const passport = require('passport');
 const configurePassport = require('./config/passport');
 const authRouter = require('./routes/auth');
 const expressLayouts = require('express-ejs-layouts');
-require('dotenv').config(); // Load environment variables
 const { checkAuthenticated } = require('./middleware/auth');
 const methodOverride = require('method-override');
-
 
 // Initialize the app
 const app = express();
@@ -19,20 +17,6 @@ const PORT = process.env.PORT || 4000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
-
-// View engine setup
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-
-// serve static files
-app.use(express.static(path.join(__dirname, 'public')));
-// Use express-ejs-layouts middleware
-app.use(expressLayouts);
-app.set('layout', 'layouts/layout'); // Specify the layout file
-
-
-// Allow the use of PUT and DELETE methods
-app.use(methodOverride('_method'));
 
 // Session middleware
 app.use(session({
@@ -56,6 +40,20 @@ app.use((req, res, next) => {
     res.locals.error = req.flash('error');
     next();
 });
+
+// Use express-ejs-layouts middleware
+app.use(expressLayouts);
+app.set('layout', 'layouts/layout'); // Specify the layout file
+
+// Allow the use of PUT and DELETE methods
+app.use(methodOverride('_method'));
+
+// View engine setup
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+// serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'public')));
 
 // Routes
 app.use('/users', authRouter);

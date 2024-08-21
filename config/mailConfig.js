@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Function to generate reset token
+// Function to generate tokens (for both password reset and email verification)
 const generateToken = () => {
     return crypto.randomBytes(20).toString('hex');
 }
@@ -19,7 +19,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Function to create email content
-function createEmailContent(subject, htmlContent) {
+const createEmailContent = (subject, htmlContent) => {
     return {
         from: process.env.EMAIL,
         subject,
@@ -28,7 +28,7 @@ function createEmailContent(subject, htmlContent) {
 }
 
 // Function to send email
-async function sendEmail(options) {
+const sendEmail = async (options) => {
     try {
         await transporter.sendMail(options);
         console.log(`${options.subject} email sent successfully.`);
@@ -38,8 +38,8 @@ async function sendEmail(options) {
     }
 }
 
-// Function to send reset email
-async function sendResetEmail(email, token, req) {
+// Function to send password reset email
+const sendResetEmail = async (email, token, req) => {
     const resetLink = `http://${req.headers.host}/users/reset-password/${token}`;
     const htmlContent = `
     <p>You are receiving this because you (or someone else) have requested the reset of the password for your account.</p>
@@ -51,11 +51,23 @@ async function sendResetEmail(email, token, req) {
     const emailOptions = createEmailContent('Password Reset Request', htmlContent);
     emailOptions.to = email;
     await sendEmail(emailOptions);
+}
 
+// Function to send email verification email
+
+const sendVerificationEmail = async (email, token, baseUrl) => {
+    const verificationUrl = `${baseUrl}/verify-email/${token}`;
+    const htmlContent = `
+    <p>Please verify your email by clicking on the following link:</p>
+    <p><a href="${verificationUrl}">Verify Email</a></p>
+    `;
+    const emailOptions = createEmailContent('Verify Your Email Address', htmlContent);
+    emailOptions.to = email;
+    await sendEmail(emailOptions);
 }
 
 module.exports = {
     generateToken,
-    sendResetEmail
+    sendResetEmail,
+    sendVerificationEmail
 };
-
